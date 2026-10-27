@@ -8,14 +8,18 @@ class AgentState(TypedDict):
 
 
 async def receive_message(state: AgentState) -> dict:
-    response = await call_llm(state["messages"])
+    messages = state["messages"]
+
+    if not messages:
+        raise ValueError("At least one message is required")
+
+    response = await call_llm(messages)
 
     return {
-        "messages": state["messages"] + [
+        "messages": messages + [
             {"role": "assistant", "content": response}
         ]
     }
-
 
 def build_graph():
     graph = StateGraph(AgentState)
