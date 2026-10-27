@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
+from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
-
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from app.agent import build_graph
 
 
@@ -10,6 +11,7 @@ app = FastAPI(title="TaskFlow API")
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
+    thread_id: str | None = None
 
     @field_validator("message")
     @classmethod
@@ -23,23 +25,36 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> dict[str, str]:
-    graph = build_graph()
+    thread_id = request.thread_id or str(uuid4())
+    async with AsyncSqliteSaver.from_conn_string(
+        "taskflow.db"
+    ) as checkpointer:
+        graph = build_graph(checkpointer)
 
-    try:
-        result = await graph.ainvoke(
-            {
-                "messages": [
-                    {"role": "user", "content": request.message}
-                ]
-            }
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=502,
-            detail="The AI service could not process your request.",
-        ) from None
+        try:
+            result = await graph.ainvoke(
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": request.message,
+                        }
+                    ]
+                },
+                config={
+                    "configurable": {
+                        "thread_id": thread_id
+                    }
+                },
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="The AI service could not process your request.",
+            ) from None
 
     return {
-        "response": result["messages"][-1]["content"]
+        "response": result["messages"][-1].content,
+        "thread_id": thread_id,
     }
 

@@ -1,4 +1,6 @@
 
+from urllib import response
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -22,9 +24,9 @@ def test_chat_endpoint(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "response": "TaskFlow API test successful!"
-    }
+    assert response.json()["response"] == "TaskFlow API test successful!"
+    assert isinstance(response.json()["thread_id"], str)
+    assert response.json()["thread_id"]
 
 
 def test_chat_endpoint_rejects_missing_message():
@@ -76,3 +78,37 @@ def test_chat_endpoint_returns_502_when_llm_fails(monkeypatch):
     assert response.json() == {
         "detail": "The AI service could not process your request."
     }
+
+
+def test_chat_endpoint_preserves_conversation_history(monkeypatch):
+    async def fake_call_llm(messages):
+        return f"Received {len(messages)} messages"
+
+    monkeypatch.setattr(
+        "app.agent.call_llm",
+        fake_call_llm,
+    )
+
+    thread_id = "api-conversation-test"
+
+    first_response = client.post(
+        "/chat",
+        json={
+            "message": "Hello!",
+            "thread_id": thread_id,
+        },
+    )
+
+    second_response = client.post(
+        "/chat",
+        json={
+            "message": "How are you?",
+            "thread_id": thread_id,
+        },
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert first_response.json()["thread_id"] == thread_id
+    assert second_response.json()["thread_id"] == thread_id
+    assert second_response.json()["response"] == "Received 3 messages"

@@ -1,10 +1,16 @@
-from typing import TypedDict
-from app.llm import call_llm
+from typing import TypedDict, Annotated
+from langgraph.graph.message import add_messages
 from langgraph.graph import END, START, StateGraph
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+from app.llm import call_llm
 
 
 class AgentState(TypedDict):
-    messages: list[dict[str, str]]
+    messages: Annotated[
+        list[dict[str, str]],
+        add_messages,
+    ]
 
 
 async def receive_message(state: AgentState) -> dict:
@@ -13,7 +19,23 @@ async def receive_message(state: AgentState) -> dict:
     if not messages:
         raise ValueError("At least one message is required")
 
-    response = await call_llm(messages)
+    llm_messages = [
+        {
+            "role": (
+                "user"
+                if message.type == "human"
+                else "assistant"
+                if message.type == "ai"
+                else message.type
+            ),
+            "content": message.content,
+        }
+        if hasattr(message, "type")
+        else message
+        for message in messages
+    ]
+
+    response = await call_llm(llm_messages)
 
     return {
         "messages": messages + [
@@ -21,11 +43,11 @@ async def receive_message(state: AgentState) -> dict:
         ]
     }
 
-def build_graph():
+def build_graph(checkpointer):
     graph = StateGraph(AgentState)
 
     graph.add_node("receive_message", receive_message)
     graph.add_edge(START, "receive_message")
     graph.add_edge("receive_message", END)
 
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)
