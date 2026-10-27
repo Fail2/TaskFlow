@@ -1,6 +1,5 @@
-
 from typing import TypedDict
-
+from app.llm import call_llm
 from langgraph.graph import END, START, StateGraph
 
 
@@ -8,8 +7,14 @@ class AgentState(TypedDict):
     messages: list[dict[str, str]]
 
 
-def receive_message(state: AgentState) -> dict:
-    return {"messages": state["messages"]}
+async def receive_message(state: AgentState) -> dict:
+    response = await call_llm(state["messages"])
+
+    return {
+        "messages": state["messages"] + [
+            {"role": "assistant", "content": response}
+        ]
+    }
 
 
 def build_graph():
