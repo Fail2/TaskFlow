@@ -1,5 +1,4 @@
-
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.agent import build_graph
@@ -26,14 +25,21 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest) -> dict[str, str]:
     graph = build_graph()
 
-    result = await graph.ainvoke(
-        {
-            "messages": [
-                {"role": "user", "content": request.message}
-            ]
-        }
-    )
+    try:
+        result = await graph.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": request.message}
+                ]
+            }
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service could not process your request.",
+        ) from None
 
     return {
         "response": result["messages"][-1]["content"]
     }
+

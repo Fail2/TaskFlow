@@ -52,3 +52,27 @@ def test_chat_endpoint_rejects_whitespace_message():
     )
 
     assert response.status_code == 422
+
+def test_chat_endpoint_returns_502_when_llm_fails(monkeypatch):
+    async def fake_call_llm(messages):
+        raise RuntimeError("Provider unavailable")
+
+    monkeypatch.setattr(
+        "app.agent.call_llm",
+        fake_call_llm,
+    )
+
+    error_client = TestClient(
+        app,
+        raise_server_exceptions=False,
+    )
+
+    response = error_client.post(
+        "/chat",
+        json={"message": "Hello"},
+    )
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "The AI service could not process your request."
+    }
