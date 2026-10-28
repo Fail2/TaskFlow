@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from pydantic import TypeAdapter
-
+from sqlalchemy import select
 from app.llm import call_llm
 from app.task_schema import Task
 from app.task_models import TaskModel
@@ -48,3 +48,81 @@ async def generate_tasks(prompt: str, db: Session) -> list[Task]:
 
     db.commit()
     return tasks
+
+
+def list_tasks(db: Session, query: str | None = None) -> list[TaskModel]:
+    statement = select(TaskModel).order_by(TaskModel.id)
+
+    tasks = db.scalars(statement).all()
+
+    if query:
+        search = query.casefold()
+        tasks = [
+            task for task in tasks
+            if search in task.title.casefold()
+            or search in (task.description or "").casefold()
+        ]
+
+    return tasks
+
+
+def update_task(
+    db: Session,
+    task_id: int,
+    changes: dict,
+) -> TaskModel | None:
+    task = db.get(TaskModel, task_id)
+
+    if task is None:
+        return None
+
+    allowed_fields = {
+        "title",
+        "description",
+        "due_date",
+        "priority",
+        "status",
+    }
+
+    for field, value in changes.items():
+        if field in allowed_fields:
+            setattr(task, field, value)
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def delete_task(db: Session, task_id: int) -> bool:
+    task = db.get(TaskModel, task_id)
+
+    if task is None:
+        return False
+
+    db.delete(task)
+    db.commit()
+    return True
+
+
+def create_tasks(db: Session, tasks_data: list[dict]) -> list[TaskModel]:
+    tasks = TypeAdapter(list[Task]).validate_python(tasks_data)
+
+    created_tasks = []
+
+    for task in tasks:
+        db_task = TaskModel(
+            title=task.title,
+            description=task.description,
+            due_date=task.due_date,
+            priority=task.priority,
+            status="pending",
+        )
+        db.add(db_task)
+        created_tasks.append(db_task)
+
+    db.commit()
+
+    for task in created_tasks:
+        db.refresh(task)
+
+    return created_tasks

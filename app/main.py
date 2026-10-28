@@ -116,12 +116,15 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest) -> dict[str, str]:
+
+@app.post("/chat")
+async def chat(request: ChatRequest, db: Session = Depends(get_db),) -> dict[str, str]:
+
     thread_id = request.thread_id or str(uuid4())
     async with AsyncSqliteSaver.from_conn_string(
         CHECKPOINT_DB
     ) as checkpointer:
-        graph = build_graph(checkpointer)
+        graph = build_graph(checkpointer, db)
 
         try:
             result = await graph.ainvoke(

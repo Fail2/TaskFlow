@@ -29,3 +29,19 @@ async def call_llm(messages: list[dict[str, str]]) -> str:
         return content
     finally:
         await client.close()
+
+
+async def call_llm_with_tools(messages: list[dict],tools: list[dict],) :
+    client = create_llm_client()
+
+    try:
+        response = await client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+
+        return response.choices[0].message
+    finally:
+        await client.close()
