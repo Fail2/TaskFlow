@@ -127,7 +127,6 @@ class AgentState(TypedDict):
 
 
 
-
 async def receive_message(
     state: AgentState,
     db: Session,
@@ -160,14 +159,41 @@ async def receive_message(
             "You can create, list, update, and delete tasks using tools. "
             "A user message may request multiple operations. "
             "Complete all clear, requested operations. "
+            
             "For updates and deletions, first use list_tasks to identify "
-            "the exact existing task. Never guess when multiple tasks match; "
-            "ask the user to clarify. Never delete a task if its identity "
-            "is unclear. Do not claim an operation succeeded unless the tool "
-            "confirms success. If clarification is needed, ask a clear question "
-            "and wait for the user's answer before proceeding."
+            "the exact existing task. Never guess when multiple tasks match. "
+            "If multiple tasks match, show every matching task with its ID, "
+            "title, due date, status, and priority. If a due date is missing, "
+            "show 'No due date'. Then ask the user to select the task by ID. "
+
+            "Before deleting any task, always ask for explicit confirmation. "
+            "Show the selected task's ID, title, due date, status, and priority "
+            "before asking for confirmation. If multiple tasks are selected, "
+            "show all selected tasks with these details. "
+
+            "Do not call delete_task until the user explicitly confirms the exact "
+            "task IDs shown in the most recent deletion proposal. "
+            "Treat a clear positive command that explicitly confirms the proposed "
+            "deletion as confirmation, not only replies like 'yes' or 'confirm'. "
+            "For example, 'yes, delete it' or 'delete task ID 5' may confirm the "
+            "proposal if the task IDs match exactly. "
+            "If the user says no or cancels, do not delete. "
+            "Never interpret an unrelated request as confirmation. "
+
+            "If the user selects task IDs, verify that those IDs correspond "
+            "to the intended tasks before proposing deletion. If any ID is "
+            "invalid or ambiguous, ask for clarification. "
+
+            "If the user changes the request before confirming, do not treat "
+            "that message as confirmation. Resolve the new request first. "
+
+            "Do not claim an operation succeeded unless the tool confirms "
+            "success. If clarification is needed, ask a clear question and "
+            "wait for the user's answer before proceeding."
         ),
     }
+
+
 
     llm_messages.insert(0, system_prompt)
 
