@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+from uuid import uuid4
 
 client = TestClient(app)
 
@@ -89,7 +90,7 @@ def test_chat_endpoint_preserves_conversation_history(monkeypatch):
         fake_call_llm,
     )
 
-    thread_id = "api-conversation-test"
+    thread_id = f"api-conversation-test-{uuid4()}"
 
     first_response = client.post(
         "/chat",
@@ -112,3 +113,19 @@ def test_chat_endpoint_preserves_conversation_history(monkeypatch):
     assert first_response.json()["thread_id"] == thread_id
     assert second_response.json()["thread_id"] == thread_id
     assert second_response.json()["response"] == "Received 3 messages"
+
+def test_chat_endpoint_generates_new_thread_id(monkeypatch):
+    async def fake_call_llm(messages):
+        return "Hello!"
+
+    monkeypatch.setattr(
+        "app.agent.call_llm",
+        fake_call_llm,
+    )
+
+    first = client.post("/chat", json={"message": "Hi"})
+    second = client.post("/chat", json={"message": "Hello"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["thread_id"] != second.json()["thread_id"]
