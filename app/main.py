@@ -1,14 +1,49 @@
 from pyexpat.errors import messages
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from app.agent import build_graph, get_conversation_history
+from sqlalchemy.orm import Session
+from app.database import SessionLocal, engine, Base
+from app.task_models import TaskModel
+from app.task_service import generate_tasks
 
 
 app = FastAPI(title="TaskFlow API")
 
+class TaskRequest(BaseModel):
+    prompt: str = Field(min_length=1)
+
+    @field_validator("prompt")
+    @classmethod
+    def prompt_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Prompt must not be blank")
+        return value
+
+
+Base.metadata.create_all(bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.post("/tasks/generate")
+async def create_tasks(
+    request: TaskRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    tasks = await generate_tasks(request.prompt, db)
+
+    return {
+        "tasks": [task.model_dump(mode="json") for task in tasks]
+    }
 
 
 class ChatRequest(BaseModel):
