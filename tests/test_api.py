@@ -164,3 +164,123 @@ def test_get_conversation_history_returns_404():
     assert response.json() == {
         "detail": "Conversation not found"
     }
+
+
+def test_generate_tasks(monkeypatch):
+    async def fake_call_llm(messages):
+        return """
+        [
+            {
+                "title": "Prepare project report",
+                "description": "Write the project report.",
+                "due_date": null,
+                "priority": "medium"
+            }
+        ]
+        """
+
+    monkeypatch.setattr("app.task_service.call_llm", fake_call_llm)
+
+    response = client.post(
+        "/tasks/generate",
+        json={"prompt": "Prepare a project report"},
+    )
+
+    assert response.status_code == 200
+
+    tasks = response.json()["tasks"]
+    assert len(tasks) == 1
+    assert tasks[0]["title"] == "Prepare project report"
+    assert tasks[0]["priority"] == "medium"
+
+
+
+def test_get_tasks():
+    response = client.get("/tasks")
+
+    assert response.status_code == 200
+    assert "tasks" in response.json()
+    assert isinstance(response.json()["tasks"], list)
+
+
+def test_update_task(monkeypatch):
+    async def fake_call_llm(messages):
+        return """
+        [
+            {
+                "title": "Prepare a project report",
+                "description": "Write the project report",
+                "due_date": null,
+                "priority": "medium"
+            }
+        ]
+        """
+
+    monkeypatch.setattr(
+        "app.task_service.call_llm",
+        fake_call_llm,
+    )
+
+    create_response = client.post(
+        "/tasks/generate",
+        json={"prompt": "Prepare a project report"},
+    )
+
+    assert create_response.status_code == 200
+
+    tasks_response = client.get("/tasks")
+    tasks = tasks_response.json()["tasks"]
+    task_id = tasks[-1]["id"]
+
+    response = client.put(
+        f"/tasks/{task_id}",
+        json={
+            "title": "Updated project report",
+            "description": "Finish the report",
+            "due_date": "2026-10-30",
+            "priority": "high",
+            "status": "in_progress",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Updated project report"
+    assert response.json()["description"] == "Finish the report"
+    assert response.json()["due_date"] == "2026-10-30"
+    assert response.json()["priority"] == "high"
+    assert response.json()["status"] == "in_progress"
+
+
+def test_delete_task(monkeypatch):
+    async def fake_call_llm(messages):
+        return """
+        [
+            {
+                "title": "Task to delete",
+                "description": "Test deleting a task",
+                "due_date": null,
+                "priority": "medium"
+            }
+        ]
+        """
+
+    monkeypatch.setattr("app.task_service.call_llm", fake_call_llm)
+
+    create_response = client.post(
+        "/tasks/generate",
+        json={"prompt": "Create a task for deletion test"},
+    )
+    assert create_response.status_code == 200
+
+    tasks_response = client.get("/tasks")
+    tasks = tasks_response.json()["tasks"]
+    task_id = tasks[-1]["id"]
+
+    delete_response = client.delete(f"/tasks/{task_id}")
+    assert delete_response.status_code == 204
+
+    tasks_response = client.get("/tasks")
+    remaining_ids = [
+        task["id"] for task in tasks_response.json()["tasks"]
+    ]
+    assert task_id not in remaining_ids
