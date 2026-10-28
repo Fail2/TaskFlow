@@ -127,10 +127,7 @@ class AgentState(TypedDict):
 
 
 
-async def receive_message(
-    state: AgentState,
-    db: Session,
-) -> dict:
+async def receive_message(state: AgentState, db: Session,) -> dict:
     messages = state["messages"]
 
     if not messages:
@@ -196,6 +193,16 @@ async def receive_message(
 
 
     llm_messages.insert(0, system_prompt)
+
+    print("Conversation messages:", len(messages))
+    print("LLM input messages:", len(llm_messages))
+    print(
+        "Approx input characters:",
+        sum(
+            len(str(message.get("content", "")))
+            for message in llm_messages
+        ),
+    )
 
     for _ in range(8):
         response = await call_llm_with_tools(

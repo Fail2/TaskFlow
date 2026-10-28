@@ -66,11 +66,7 @@ def list_tasks(db: Session, query: str | None = None) -> list[TaskModel]:
     return tasks
 
 
-def update_task(
-    db: Session,
-    task_id: int,
-    changes: dict,
-) -> TaskModel | None:
+def update_task(db: Session, task_id: int, changes: dict,) -> TaskModel | None:
     task = db.get(TaskModel, task_id)
 
     if task is None:

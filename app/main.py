@@ -41,6 +41,9 @@ app.mount(
 def home():
     return FileResponse("static/index.html")
 
+@app.get("/health")
+def health(): return {"status":"ok"}
+
 @app.post("/tasks/generate")
 async def create_tasks(request: TaskRequest, db: Session = Depends(get_db),) -> dict:
     tasks = await generate_tasks(request.prompt, db)
@@ -125,8 +128,6 @@ class ChatRequest(BaseModel):
 
         return value
 
-
-@app.post("/chat")
 
 @app.post("/chat")
 async def chat(request: ChatRequest, db: Session = Depends(get_db),) -> dict[str, str]:
