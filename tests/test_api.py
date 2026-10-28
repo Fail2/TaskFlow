@@ -154,3 +154,13 @@ def test_get_conversation_history(monkeypatch):
     assert data["thread_id"] == thread_id
     assert data["messages"][-2]["content"] == "Hello"
     assert data["messages"][-1]["content"] == "Hello from TaskFlow!"
+
+def test_get_conversation_history_returns_404():
+    response = client.get(
+        f"/history/nonexistent-{uuid4()}"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Conversation not found"
+    }

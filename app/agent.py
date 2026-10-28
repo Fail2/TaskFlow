@@ -62,4 +62,7 @@ async def get_conversation_history(graph, thread_id: str) -> list:
         }
     )
 
+    if not state.values:
+        return []
+
     return state.values.get("messages", [])

@@ -1,3 +1,5 @@
+from pyexpat.errors import messages
+
 from fastapi import FastAPI, HTTPException
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
@@ -66,6 +68,12 @@ async def get_history(thread_id: str) -> dict:
     ) as checkpointer:
         graph = build_graph(checkpointer)
         messages = await get_conversation_history(graph, thread_id)
+
+        if not messages:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found",
+            )
 
     return {
         "thread_id": thread_id,
