@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.task_models import TaskModel
 from app.task_service import generate_tasks
-
+from pathlib import Path
 
 app = FastAPI(title="TaskFlow API")
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+CHECKPOINT_DB = str(DATA_DIR / "taskflow.db")
 
 class TaskRequest(BaseModel):
     prompt: str = Field(min_length=1)
@@ -64,7 +68,7 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest) -> dict[str, str]:
     thread_id = request.thread_id or str(uuid4())
     async with AsyncSqliteSaver.from_conn_string(
-        "taskflow.db"
+        CHECKPOINT_DB
     ) as checkpointer:
         graph = build_graph(checkpointer)
 
@@ -99,7 +103,7 @@ async def chat(request: ChatRequest) -> dict[str, str]:
 @app.get("/history/{thread_id}")
 async def get_history(thread_id: str) -> dict:
     async with AsyncSqliteSaver.from_conn_string(
-        "taskflow.db"
+        CHECKPOINT_DB
     ) as checkpointer:
         graph = build_graph(checkpointer)
         messages = await get_conversation_history(graph, thread_id)

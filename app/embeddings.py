@@ -1,10 +1,15 @@
 
+from pathlib import Path
 import chromadb
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+CHROMA_DIR = DATA_DIR / "chroma_db"
+CHROMA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 COSINE_DISTANCE_THRESHOLD = 0.5
 
-client = chromadb.PersistentClient(path="./chroma_db")
+client = chromadb.PersistentClient(path=str(CHROMA_DIR))
 
 collection = client.get_or_create_collection(
     name="taskflow_knowledge",
