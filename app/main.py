@@ -73,6 +73,23 @@ def get_tasks(db: Session = Depends(get_db)) -> dict:
         ]
     }
 
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),) -> Response:
+    task = db.get(TaskModel, task_id)
+
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+        )
+
+    db.delete(task)
+    db.commit()
+
+    return Response(status_code=204)
+
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
