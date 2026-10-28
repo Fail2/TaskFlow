@@ -1,10 +1,11 @@
 from pyexpat.errors import messages
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from app.agent import build_graph, get_conversation_history
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from app.database import SessionLocal, engine, Base
 from app.task_models import TaskModel
 from app.task_service import generate_tasks
@@ -41,12 +42,35 @@ def get_db():
 @app.post("/tasks/generate")
 async def create_tasks(
     request: TaskRequest,
-    db: Session = Depends(get_db),
-) -> dict:
+    db: Session = Depends(get_db),) -> dict:
     tasks = await generate_tasks(request.prompt, db)
 
     return {
         "tasks": [task.model_dump(mode="json") for task in tasks]
+    }
+
+@app.get("/tasks")
+def get_tasks(db: Session = Depends(get_db)) -> dict:
+    tasks = db.scalars(
+        select(TaskModel).order_by(TaskModel.id)
+    ).all()
+
+    return {
+        "tasks": [
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "due_date": (
+                    task.due_date.isoformat()
+                    if task.due_date
+                    else None
+                ),
+                "priority": task.priority,
+                "status": task.status,
+            }
+            for task in tasks
+        ]
     }
 
 
@@ -61,7 +85,6 @@ class ChatRequest(BaseModel):
             raise ValueError("Message must not be blank")
 
         return value
-
 
 
 @app.post("/chat")
