@@ -51,3 +51,15 @@ def build_graph(checkpointer):
     graph.add_edge("receive_message", END)
 
     return graph.compile(checkpointer=checkpointer)
+
+
+async def get_conversation_history(graph, thread_id: str) -> list:
+    state = await graph.aget_state(
+        {
+            "configurable": {
+                "thread_id": thread_id
+            }
+        }
+    )
+
+    return state.values.get("messages", [])

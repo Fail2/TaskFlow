@@ -1,10 +1,6 @@
-
-from urllib import response
-
+import pytest   
 from fastapi.testclient import TestClient
-
 from app.main import app
-
 from uuid import uuid4
 
 client = TestClient(app)
@@ -129,3 +125,32 @@ def test_chat_endpoint_generates_new_thread_id(monkeypatch):
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["thread_id"] != second.json()["thread_id"]
+
+
+def test_get_conversation_history(monkeypatch):
+    thread_id = f"history-test-{uuid4()}"
+
+    async def fake_call_llm(messages):
+        return "Hello from TaskFlow!"
+
+    monkeypatch.setattr(
+        "app.agent.call_llm",
+        fake_call_llm,
+    )
+
+    chat_response = client.post(
+        "/chat",
+        json={
+            "message": "Hello",
+            "thread_id": thread_id,
+        },
+    )
+    assert chat_response.status_code == 200
+
+    history_response = client.get(f"/history/{thread_id}")
+
+    assert history_response.status_code == 200
+    data = history_response.json()
+    assert data["thread_id"] == thread_id
+    assert data["messages"][-2]["content"] == "Hello"
+    assert data["messages"][-1]["content"] == "Hello from TaskFlow!"

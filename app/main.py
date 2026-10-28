@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from app.agent import build_graph
+from app.agent import build_graph, get_conversation_history
 
 
 app = FastAPI(title="TaskFlow API")
@@ -58,3 +58,26 @@ async def chat(request: ChatRequest) -> dict[str, str]:
         "thread_id": thread_id,
     }
 
+
+@app.get("/history/{thread_id}")
+async def get_history(thread_id: str) -> dict:
+    async with AsyncSqliteSaver.from_conn_string(
+        "taskflow.db"
+    ) as checkpointer:
+        graph = build_graph(checkpointer)
+        messages = await get_conversation_history(graph, thread_id)
+
+    return {
+        "thread_id": thread_id,
+        "messages": [
+            {
+                "role": (
+                    "user" if message.type == "human"
+                    else "assistant" if message.type == "ai"
+                    else message.type
+                ),
+                "content": message.content,
+            }
+            for message in messages
+        ],
+    }
