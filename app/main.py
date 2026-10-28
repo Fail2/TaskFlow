@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.database import SessionLocal, engine, Base
 from app.task_models import TaskModel
 from app.task_service import generate_tasks
+from app.task_schema import TaskRequest, TaskUpdateRequest
 from pathlib import Path
 
 app = FastAPI(title="TaskFlow API")
@@ -16,16 +17,6 @@ app = FastAPI(title="TaskFlow API")
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CHECKPOINT_DB = str(DATA_DIR / "taskflow.db")
-
-class TaskRequest(BaseModel):
-    prompt: str = Field(min_length=1)
-
-    @field_validator("prompt")
-    @classmethod
-    def prompt_must_not_be_blank(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("Prompt must not be blank")
-        return value
 
 
 Base.metadata.create_all(bind=engine)
@@ -40,9 +31,7 @@ def get_db():
 
 
 @app.post("/tasks/generate")
-async def create_tasks(
-    request: TaskRequest,
-    db: Session = Depends(get_db),) -> dict:
+async def create_tasks(request: TaskRequest, db: Session = Depends(get_db),) -> dict:
     tasks = await generate_tasks(request.prompt, db)
 
     return {
@@ -74,9 +63,7 @@ def get_tasks(db: Session = Depends(get_db)) -> dict:
     }
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(
-    task_id: int,
-    db: Session = Depends(get_db),) -> Response:
+def delete_task(task_id: int, db: Session = Depends(get_db),) -> Response:
     task = db.get(TaskModel, task_id)
 
     if task is None:
@@ -90,6 +77,30 @@ def delete_task(
 
     return Response(status_code=204)
 
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, request: TaskUpdateRequest, db: Session = Depends(get_db),) -> dict:
+    task = db.get(TaskModel, task_id)
+
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.title = request.title
+    task.description = request.description
+    task.due_date = request.due_date
+    task.priority = request.priority
+    task.status = request.status
+
+    db.commit()
+    db.refresh(task)
+
+    return {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "due_date": task.due_date.isoformat() if task.due_date else None,
+        "priority": task.priority,
+        "status": task.status,
+    }
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
