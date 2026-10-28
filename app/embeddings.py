@@ -42,7 +42,7 @@ def search_text(query: str, limit: int = 5) -> list[dict]:
                 {
                     "id": results["ids"][0][i],
                     "text": results["documents"][0][i],
-                    "distance": distance,
+                    "distance": max(0.0,distance),
                 }
             )
 

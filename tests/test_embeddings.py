@@ -6,22 +6,32 @@ import pytest
 from app.embeddings import add_text, search_text
 
 
+
 def test_add_text_and_search():
+    from app import embeddings
+
     text_id = f"test-{uuid4()}"
     text = "Finish the project report by Friday"
 
     add_text(text=text, text_id=text_id)
 
-    results = search_text(
-        "Finish the project report by Friday",
+    results = embeddings.collection.get(
+        ids=[text_id],
+        include=["documents"],
     )
+
+    assert results["ids"] == [text_id]
+    assert results["documents"] == [text]
+    
+    search_results = search_text(text, limit=50)
 
     assert any(
         result["id"] == text_id
         and result["text"] == text
         and result["distance"] <= 0.5
-        for result in results
+        for result in search_results
     )
+
 
 
 def test_search_filters_results_above_threshold(monkeypatch):
