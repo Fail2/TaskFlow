@@ -11,6 +11,8 @@ from app.task_models import TaskModel
 from app.task_service import generate_tasks
 from app.task_schema import TaskRequest, TaskUpdateRequest
 from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI(title="TaskFlow API")
 
@@ -29,6 +31,15 @@ def get_db():
     finally:
         db.close()
 
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static",
+)
+
+@app.get("/")
+def home():
+    return FileResponse("static/index.html")
 
 @app.post("/tasks/generate")
 async def create_tasks(request: TaskRequest, db: Session = Depends(get_db),) -> dict:

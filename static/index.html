@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#172A4D">
+    <title>TaskFlow — AI Task Manager</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="brand">TASKFLOW</div>
+        <div class="tagline">AI TASK MANAGER</div>
+    </header>
+
+    <main class="layout">
+        <!-- Task board -->
+        <section class="intro">
+            <h1>My tasks</h1>
+            <p>Organize tasks by asking your AI assistant.</p>
+
+            <div class="board card">
+                <div class="board-head">
+                    <h2>Task board</h2>
+                    <span id="task-count" class="count">All tasks 0</span>
+                </div>
+
+                <div id="task-list" class="task-list">
+                    <div class="empty">Loading your tasks…</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Assistant -->
+        <section class="chat card">
+            <div class="chat-head">
+                <div class="sparkle" aria-hidden="true">✦</div>
+
+                <div>
+                    <h2>AI Assistant</h2>
+                    <p>Manage everything with a message</p>
+                </div>
+
+                <span id="connection" class="connection">
+                    ● Ready
+                </span>
+            </div>
+
+            <div id="chat-log" class="chat-log" role="log" aria-live="polite">
+                <div class="welcome">
+                    Hi! I'm your TaskFlow assistant. Tell me what you'd like to do.
+                </div>
+            </div>
+
+            <div id="error-banner" class="error-banner" hidden>
+                Could not reach the server. Please try again.
+                <button id="retry" type="button">Retry</button>
+            </div>
+
+            <div id="quick-prompts" class="quick-prompts">
+                <button type="button" data-prompt="Create a high-priority task to finish the demo tomorrow">
+                    Create a task
+                </button>
+
+                <button type="button" data-prompt="Show unfinished tasks related to documentation">
+                    Find unfinished tasks
+                </button>
+
+                <button type="button" data-prompt="Show me all my tasks">
+                    View all tasks
+                </button>
+            </div>
+
+            <form id="chat-form" class="composer">
+                <label for="message">YOUR INSTRUCTION</label>
+
+                <textarea id="message" name="message" maxlength="1000" rows="2" placeholder="Type a task instruction…"
+                    required></textarea>
+
+                <div class="composer-foot">
+                    <span id="helper">Example: Complete the weekly report</span>
+                    <span id="char-count">0/1000</span>
+
+                    <button id="send" type="submit">
+                        Send <span aria-hidden="true">➤</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>
