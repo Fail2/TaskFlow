@@ -126,9 +126,8 @@ class AgentState(TypedDict):
     ]
 
 
-
 async def receive_message(state: AgentState, db: Session,) -> dict:
-    messages = state["messages"]
+    messages = state["messages"][-10:]
 
     if not messages:
         raise ValueError("At least one message is required")
